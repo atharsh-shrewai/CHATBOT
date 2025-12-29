@@ -1,8 +1,7 @@
 - name: Deploy AI Chatbot
   hosts: chatbot_server
-  connection: aws_ssm
   become: yes
-  gather_facts : yes
+  gather_facts: yes
 
   tasks:
     - name: Update system

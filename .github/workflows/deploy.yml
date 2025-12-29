@@ -35,8 +35,8 @@ jobs:
         run: |
           cd infra
           terraform init
-          terraform destroy -auto-approve || true
-          terraform apply -auto-approve -var="ssh_public_key=$(cat ~/.ssh/chatbot_key.pub)"
+          terraform destroy -auto-approve -input=false || true
+          terraform apply -auto-approve -input=false -var="ssh_public_key=$(cat ~/.ssh/chatbot_key.pub)"
 
       - name: Get EC2 Server IP
         id: instance
@@ -68,7 +68,7 @@ jobs:
         run: |
           pip install ansible
 
-      - name: Run Ansible Playbook via SSM
+      - name: Run Ansible Playbook via SSH
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           ANSIBLE_HOST_KEY_CHECKING: 'False'
