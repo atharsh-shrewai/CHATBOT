@@ -46,12 +46,20 @@ resource "aws_security_group" "allow_web" {
 
 # Add SSM role and profile
 resource "aws_iam_instance_profile" "ssm_profile" {
-  name = "ssm-instance-profile"
+  name = "ssm-instance-profile-${formatdate("YYYYMMDDhhmmss", timestamp())}"
   role = aws_iam_role.ssm_role.name
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_iam_role" "ssm_role" {
-  name = "ssm-role-for-ec2"
+  name = "ssm-role-for-ec2-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
