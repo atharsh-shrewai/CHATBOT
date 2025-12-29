@@ -63,11 +63,17 @@ jobs:
 
       - name: Install Ansible and AWS Collection
         run: |
-          pip install ansible
+          pip install ansible boto3 botocore
           ansible-galaxy collection install amazon.aws
+          
+      - name: Install AWS Session Manager Plugin
+        run: |
+          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
+          sudo dpkg -i session-manager-plugin.deb
 
       - name: Run Ansible Playbook via SSM
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
         run: |
-          ansible-playbook -i inventory.ini ansible/playbook.yml
+          ansible-playbook -vvv -i inventory.ini ansible/playbook.yml
