@@ -4,7 +4,7 @@ provider "aws" {
 
 resource "aws_instance" "chatbot_server" {
   ami           = "ami-0084a47cc718c111a"  
-  instance_type = "t2.micro"              
+  instance_type = "t3.micro"              
   
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
 
