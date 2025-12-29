@@ -39,6 +39,23 @@ jobs:
           INSTANCE_ID=$(terraform output -raw instance_id)
           echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
 
+      - name: Wait for SSM Agent to be ready
+        run: |
+          INSTANCE_ID="${{ steps.instance.outputs.instance_id }}"
+          echo "Waiting for SSM agent to be ready on instance $INSTANCE_ID..."
+          for i in {1..30}; do
+            STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text 2>/dev/null || echo "None")
+            if [ "$STATUS" == "Online" ]; then
+              echo "SSM agent is online!"
+              break
+            fi
+            echo "Attempt $i/30: SSM agent status is $STATUS. Waiting 10 seconds..."
+            sleep 10
+          done
+
       - name: Create Ansible Inventory for SSM
         run: |
           echo "[chatbot_server]" > inventory.ini
