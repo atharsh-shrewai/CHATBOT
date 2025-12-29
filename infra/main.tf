@@ -16,7 +16,11 @@ resource "aws_instance" "chatbot_server" {
 }
 
 resource "aws_security_group" "allow_web" {
-  name = "allow-web-ssh"
+  name = "allow-web-ssh-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   ingress {
     from_port   = 8000
