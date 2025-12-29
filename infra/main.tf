@@ -96,7 +96,3 @@ output "server_ip" {
 output "instance_id" {
   value = aws_instance.chatbot_server.id
 }
-
-output "instance_id" {
-  value = aws_instance.chatbot_server.id
-}
