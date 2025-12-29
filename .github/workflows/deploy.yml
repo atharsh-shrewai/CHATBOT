@@ -1,0 +1,55 @@
+name: Deploy Chatbot API
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::899659212473:role/GitHubActions-Role
+          aws-region: eu-central-1
+         
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Apply
+        run: |
+          cd infra
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Get EC2 Instance ID
+        id: instance
+        run: |
+          cd infra
+          INSTANCE_ID=$(terraform output -raw instance_id)
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+
+      - name: Create Ansible Inventory for SSM
+        run: |
+          echo "[chatbot_server]" > inventory.ini
+          echo "${{ steps.instance.outputs.instance_id }} ansible_user=ubuntu ansible_connection=aws_ssm ansible_aws_ssm_region=eu-central-1 ansible_become=true" >> inventory.ini
+
+      - name: Install Ansible and AWS Collection
+        run: |
+          pip install ansible
+          ansible-galaxy collection install amazon.aws
+
+      - name: Run Ansible Playbook via SSM
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          ansible-playbook -i inventory.ini ansible/playbook.yml

@@ -1,0 +1,75 @@
+provider "aws" {
+  region = "eu-central-1"  
+}
+
+resource "aws_instance" "chatbot_server" {
+  ami           = "ami-0084a47cc718c111a"  
+  instance_type = "t2.micro"              
+  
+  iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
+
+  vpc_security_group_ids = [aws_security_group.allow_web.id]
+
+  tags = {
+    Name = "AI-Chatbot-Server"
+  }
+}
+
+resource "aws_security_group" "allow_web" {
+  name = "allow-web-ssh"
+
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Add SSM role and profile
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "ssm-instance-profile"
+  role = aws_iam_role.ssm_role.name
+}
+
+resource "aws_iam_role" "ssm_role" {
+  name = "ssm-role-for-ec2"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_managed" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+
+
+output "server_ip" {
+  value = aws_instance.chatbot_server.public_ip
+}
+
+output "instance_id" {
+  value = aws_instance.chatbot_server.id
+}

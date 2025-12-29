@@ -1,0 +1,79 @@
+- name: Deploy AI Chatbot
+  hosts: chatbot_server
+  connection: aws_ssm
+  become: yes
+  gather_facts : yes
+
+  tasks:
+    - name: Update system
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install Python and pip
+      apt:
+        name:
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Install required tools
+      pip:
+        executable: pip3
+        name:
+          - streamlit
+          - fastapi
+          - uvicorn
+          - langchain
+          - langchain-groq
+          - groq 
+          - python-dotenv
+
+    - name: Create chatbot directory
+      file:
+        path: /home/ubuntu/chatbot
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copy chatbot code
+      copy:
+        src: ../src/
+        dest: /home/ubuntu/chatbot/
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Create .env file with API key
+      copy:
+        content: |
+          GROQ_API_KEY={{ lookup('env', 'GROQ_API_KEY') }}
+        dest: /home/ubuntu/chatbot/.env
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Create systemd service for chatbot
+      copy:
+        content: |
+          [Unit]
+          Description=AI Chatbot API
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=ubuntu
+          WorkingDirectory=/home/ubuntu/chatbot
+          ExecStart=/usr/local/bin/uvicorn api:app --host 0.0.0.0 --port 8000
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/chatbot.service
+
+    - name: Start and enable chatbot service
+      systemd:
+        name: chatbot
+        state: restarted
+        enabled: yes
+        daemon_reload: yes 
