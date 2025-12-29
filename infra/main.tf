@@ -2,10 +2,21 @@ provider "aws" {
   region = "eu-central-1"  
 }
 
+resource "aws_key_pair" "chatbot_key" {
+  key_name   = "chatbot-ssh-key-${formatdate("YYYYMMDDhhmmss", timestamp())}"
+  public_key = var.ssh_public_key
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key for EC2 access"
+  type        = string
+}
+
 resource "aws_instance" "chatbot_server" {
   ami           = "ami-0084a47cc718c111a"  
   instance_type = "t3.micro"              
   
+  key_name             = aws_key_pair.chatbot_key.key_name
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
 
   vpc_security_group_ids = [aws_security_group.allow_web.id]

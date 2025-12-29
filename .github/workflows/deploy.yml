@@ -25,51 +25,48 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Generate SSH Key Pair
+        run: |
+          ssh-keygen -t rsa -b 4096 -f ~/.ssh/chatbot_key -N ""
+          chmod 600 ~/.ssh/chatbot_key
+          chmod 644 ~/.ssh/chatbot_key.pub
+
       - name: Terraform Init & Apply
         run: |
           cd infra
           terraform init
           terraform destroy -auto-approve || true
-          terraform apply -auto-approve
+          terraform apply -auto-approve -var="ssh_public_key=$(cat ~/.ssh/chatbot_key.pub)"
 
-      - name: Get EC2 Instance ID
+      - name: Get EC2 Server IP
         id: instance
         run: |
           cd infra
-          INSTANCE_ID=$(terraform output -raw instance_id)
-          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          SERVER_IP=$(terraform output -raw server_ip)
+          echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
+          echo "Server IP: $SERVER_IP"
 
-      - name: Wait for SSM Agent to be ready
+      - name: Wait for SSH to be ready
         run: |
-          INSTANCE_ID="${{ steps.instance.outputs.instance_id }}"
-          echo "Waiting for SSM agent to be ready on instance $INSTANCE_ID..."
+          SERVER_IP="${{ steps.instance.outputs.server_ip }}"
+          echo "Waiting for SSH to be ready on $SERVER_IP..."
           for i in {1..30}; do
-            STATUS=$(aws ssm describe-instance-information \
-              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
-              --query "InstanceInformationList[0].PingStatus" \
-              --output text 2>/dev/null || echo "None")
-            if [ "$STATUS" == "Online" ]; then
-              echo "SSM agent is online!"
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i ~/.ssh/chatbot_key ubuntu@$SERVER_IP 'echo SSH Ready' 2>/dev/null; then
+              echo "SSH is ready!"
               break
             fi
-            echo "Attempt $i/30: SSM agent status is $STATUS. Waiting 10 seconds..."
+            echo "Attempt $i/30: SSH not ready yet. Waiting 10 seconds..."
             sleep 10
           done
 
-      - name: Create Ansible Inventory for SSM
+      - name: Create Ansible Inventory for SSH
         run: |
           echo "[chatbot_server]" > inventory.ini
-          echo "${{ steps.instance.outputs.instance_id }} ansible_user=ubuntu ansible_connection=aws_ssm ansible_aws_ssm_region=eu-central-1 ansible_become=true" >> inventory.ini
+          echo "${{ steps.instance.outputs.server_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/chatbot_key ansible_ssh_common_args='-o StrictHostKeyChecking=no' ansible_become=true" >> inventory.ini
 
-      - name: Install Ansible and AWS Collection
+      - name: Install Ansible
         run: |
-          pip install ansible boto3 botocore
-          ansible-galaxy collection install amazon.aws
-          
-      - name: Install AWS Session Manager Plugin
-        run: |
-          curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb"
-          sudo dpkg -i session-manager-plugin.deb
+          pip install ansible
 
       - name: Run Ansible Playbook via SSM
         env:
