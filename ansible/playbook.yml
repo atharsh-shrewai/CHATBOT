@@ -1,12 +1,12 @@
 - name: Deploy AI Chatbot
   hosts: chatbot_server
-  become: yes
-  gather_facts: yes
+  become: 'yes'
+  gather_facts: 'yes'
 
   tasks:
     - name: Update system
       apt:
-        update_cache: yes
+        update_cache: 'yes'
         upgrade: dist
 
     - name: Install Python and pip
@@ -20,13 +20,13 @@
       pip:
         executable: pip3
         break_system_packages: true
+        extra_args: '--ignore-installed'
         name:
-          - streamlit
           - fastapi
           - uvicorn
           - langchain
           - langchain-groq
-          - groq 
+          - groq
           - python-dotenv
 
     - name: Create chatbot directory
@@ -75,5 +75,5 @@
       systemd:
         name: chatbot
         state: restarted
-        enabled: yes
-        daemon_reload: yes 
+        enabled: 'yes'
+        daemon_reload: 'yes'
