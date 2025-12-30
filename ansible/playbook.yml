@@ -81,15 +81,9 @@
         enabled: 'yes'
         daemon_reload: 'yes'
 
-    - name: Get server public IP
-      uri:
-        url: http://169.254.169.254/latest/meta-data/public-ipv4
-        return_content: 'yes'
-      register: public_ip
-
     - name: Set domain name using nip.io
       set_fact:
-        domain_name: '{{ public_ip.content | replace(''.'', ''-'') }}.nip.io'
+        domain_name: '{{ lookup("env", "SERVER_PUBLIC_IP") | replace(".", "-") }}.nip.io'
 
     - name: Configure nginx reverse proxy
       copy:

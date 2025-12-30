@@ -71,6 +71,7 @@ jobs:
       - name: Run Ansible Playbook via SSH
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SERVER_PUBLIC_IP: ${{ steps.instance.outputs.server_ip }}
           ANSIBLE_HOST_KEY_CHECKING: 'False'
         run: |
           ansible-playbook -vvv -i inventory.ini ansible/playbook.yml
