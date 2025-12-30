@@ -89,7 +89,7 @@
 
     - name: Set domain name using nip.io
       set_fact:
-        domain_name: "{{ public_ip.content | replace('.', '-') }}.nip.io"
+        domain_name: '{{ public_ip.content | replace(''.'', ''-'') }}.nip.io'
 
     - name: Configure nginx reverse proxy
       copy:
@@ -135,12 +135,9 @@
         delay: 2
 
     - name: Obtain SSL certificate from Let's Encrypt
-      command: >
-        certbot --nginx -d {{ domain_name }}
-        --non-interactive --agree-tos
-        --email admin@{{ domain_name }}
-        --redirect
+      command: |
+        certbot --nginx -d {{ domain_name }} --non-interactive --agree-tos --email admin@{{ domain_name }} --redirect
       register: certbot_result
-      changed_when: "'Congratulations' in certbot_result.stdout"
-      failed_when: "certbot_result.rc != 0 and 'Certificate not yet due for renewal' not in certbot_result.stdout"
-        daemon_reload: 'yes'
+      changed_when: '''Congratulations'' in certbot_result.stdout'
+      failed_when: certbot_result.rc != 0 and 'Certificate not yet due for renewal'
+        not in certbot_result.stdout
